@@ -1,0 +1,179 @@
+/* Comic Con United — Comic-Panel Neo-Brutalism design system.
+   Off-white paper + halftone dots, 4px ink borders, hard offset shadows
+   (no blur), flat vermilion red / brutalist yellow / hero blue + ink.
+   No gradients-as-decoration, no flag motifs, anywhere. */
+
+:root {
+  --paper: #f6f1e3;
+  --card: #fffdf4;
+  --ink: #141414;
+  --red: #e63b21;
+  --yellow: #ffc91f;
+  --blue: #2456e6;
+  --green: #1f9d55;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body), system-ui, sans-serif;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: radial-gradient(rgba(20, 20, 20, 0.13) 1.2px, transparent 1.35px);
+  background-size: 18px 18px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.display { font-family: var(--font-display), sans-serif; letter-spacing: 0.01em; }
+
+.wrap { max-width: 1060px; margin: 0 auto; padding: 16px 16px 48px; }
+.narrow { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+
+.panel {
+  background: var(--card);
+  border: 4px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--ink);
+  padding: 20px;
+  margin-bottom: 22px;
+}
+.panel.red { background: var(--red); color: #fff; }
+.panel.yellow { background: var(--yellow); }
+.panel.blue { background: var(--blue); color: #fff; }
+
+h1, h2, h3 { font-family: var(--font-display), sans-serif; font-weight: 400; margin: 0 0 10px; line-height: 1.05; }
+p { line-height: 1.5; }
+
+.btn {
+  display: inline-block;
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  text-align: center;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 4px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  padding: 13px 20px;
+  min-height: 54px;
+  cursor: pointer;
+  user-select: none;
+}
+.btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+.btn.red { background: var(--red); color: #fff; }
+.btn.blue { background: var(--blue); color: #fff; }
+.btn.paper { background: var(--card); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.block { display: block; width: 100%; }
+
+.input {
+  width: 100%;
+  font: inherit;
+  font-size: 1.05rem;
+  padding: 13px 14px;
+  min-height: 54px;
+  border: 4px solid var(--ink);
+  background: #fff;
+  margin-bottom: 14px;
+}
+.input:focus { outline: 3px solid var(--blue); outline-offset: 1px; }
+label.lbl { display: block; font-weight: 700; margin-bottom: 6px; }
+
+.chip {
+  display: inline-block;
+  border: 3px solid var(--ink);
+  background: var(--card);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 3px 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin: 0 6px 6px 0;
+}
+.chip.yellow { background: var(--yellow); }
+.chip.red { background: var(--red); color: #fff; }
+.chip.blue { background: var(--blue); color: #fff; }
+
+/* Home hero */
+.hero { text-align: left; padding: 26px 22px; }
+.hero .issue {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  border-bottom: 4px solid var(--ink); padding-bottom: 10px; margin-bottom: 16px;
+  font-family: var(--font-display), sans-serif; font-size: 0.95rem;
+}
+.hero h1 {
+  font-size: clamp(2.6rem, 10vw, 5.2rem);
+  text-shadow: 5px 5px 0 var(--yellow);
+  margin-bottom: 12px;
+}
+.prize-strip {
+  background: var(--red); color: #fff;
+  border: 4px solid var(--ink); box-shadow: 6px 6px 0 var(--ink);
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(1.15rem, 5vw, 1.7rem);
+  text-align: center; padding: 12px 10px; margin-bottom: 22px;
+}
+
+.mode-grid, .char-grid { display: grid; gap: 18px; grid-template-columns: 1fr; }
+@media (min-width: 640px) {
+  .mode-grid { grid-template-columns: 1fr 1fr; }
+  .char-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 960px) {
+  .char-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.mode-card { display: block; text-decoration: none; color: var(--ink); }
+.mode-card h3 { font-size: 1.6rem; }
+.char-card { padding: 0; overflow: hidden; }
+.char-card img { width: 100%; height: 210px; object-fit: cover; object-position: top; display: block; border-bottom: 4px solid var(--ink); }
+.char-card .cc-body { padding: 12px 14px 14px; }
+.char-card h3 { font-size: 1.25rem; margin-bottom: 4px; }
+.char-card p { margin: 0 0 8px; font-size: 0.92rem; }
+
+table.board { width: 100%; border-collapse: collapse; font-size: 1rem; }
+table.board th, table.board td { border: 3px solid var(--ink); padding: 8px 10px; text-align: left; background: #fff; }
+table.board th { background: var(--yellow); font-family: var(--font-display), sans-serif; font-weight: 400; }
+table.board tr.me td { background: #ffe9a8; font-weight: 700; }
+
+.options { display: grid; gap: 14px; grid-template-columns: 1fr; margin-top: 16px; }
+@media (min-width: 640px) { .options { grid-template-columns: 1fr 1fr; } }
+.opt {
+  font: inherit; font-weight: 700; font-size: 1.05rem; text-align: left;
+  border: 4px solid var(--ink); box-shadow: 5px 5px 0 var(--ink);
+  padding: 16px; min-height: 64px; cursor: pointer; color: var(--ink); background: var(--card);
+}
+.opt.c0 { background: var(--red); color: #fff; }
+.opt.c1 { background: var(--blue); color: #fff; }
+.opt.c2 { background: var(--yellow); }
+.opt.c3 { background: var(--card); }
+.opt:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+.opt.picked { outline: 5px solid var(--ink); outline-offset: 2px; }
+.opt.correct { background: var(--green); color: #fff; }
+.opt.wrong { background: #5a5a5a; color: #fff; }
+.opt:disabled { cursor: default; opacity: 0.92; }
+
+.timerbar { border: 4px solid var(--ink); height: 26px; background: #fff; margin: 12px 0; }
+.timerbar > div { height: 100%; background: var(--red); transition: width 0.25s linear; }
+
+.podium { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .podium { grid-template-columns: repeat(3, 1fr); } }
+.podium .slot { text-align: center; padding: 18px 12px; }
+.podium .medal { font-size: 2.4rem; }
+
+.err { background: #fff; border: 4px solid var(--red); color: var(--red); font-weight: 700; padding: 10px 14px; margin-bottom: 14px; }
+.okmsg { background: #fff; border: 4px solid var(--green); color: var(--green); font-weight: 700; padding: 10px 14px; margin-bottom: 14px; }
+.muted { opacity: 0.75; font-size: 0.92rem; }
+.center { text-align: center; }
+.big-count { font-family: var(--font-display), sans-serif; font-size: 3rem; line-height: 1; }
+
+footer.site {
+  border-top: 4px solid var(--ink); margin-top: 8px; padding-top: 14px;
+  font-size: 0.9rem;
+}
+
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  .panel { box-shadow: none; }
+}
