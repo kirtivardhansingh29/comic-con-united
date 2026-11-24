@@ -9,7 +9,7 @@ Muse artifact runtime and deploys to Vercel as-is.
 
 ## What is inside
 
-- **Home** — comic-cover hero, champion strip, 8-hero character gallery,
+- **Home** — comic-cover hero, prize strip, 8-hero character gallery,
   event details, and the official Comic Con India logo shown **only** as an
   information card inside Event Details (never as branding).
 - **Live Quiz** (`/live`) — join → lobby → 15 questions (20s each) → reveal

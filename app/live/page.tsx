@@ -98,9 +98,28 @@ export default function LivePage() {
   const poll = useCallback(async () => {
     try {
       const r = await fetch(`/api/state?pid=${encodeURIComponent(pid)}`, { cache: "no-store" });
-      if (r.ok) setView(await r.json());
+      if (!r.ok) return; // an error response must never clear the stored ID
+      const data: StateView = await r.json();
+      // Stale-session recovery: if the host cleared the room, this player
+      // was removed server-side but the browser still holds the old ID —
+      // without this check the join form never comes back and the player
+      // can never rejoin from this phone. A SUCCESSFUL lobby-phase state
+      // whose participant list definitively lacks my ID means the session
+      // is gone: drop the stored ID so the join form reappears. Lobby
+      // phase only — never kick anyone mid-game on a partial response,
+      // and the catch below means a failed request never clears either.
+      if (
+        pid &&
+        data.phase === "lobby" &&
+        !data.participants.some((p) => p.id === pid)
+      ) {
+        localStorage.removeItem("ccu-pid");
+        localStorage.removeItem("ccu-name");
+        setPid("");
+      }
+      setView(data);
     } catch {
-      /* network blip — next tick retries */
+      /* network blip — next tick retries; a failed request never clears the ID */
     }
   }, [pid]);
 
@@ -514,7 +533,7 @@ export default function LivePage() {
               <Board rows={view.leaderboard} pid={pid} />
             </>
           )}
-          <p className="center muted">Hosted by Vitthal Diwedi · Har game ka apna champion 🏆 Winners Board par naam</p>
+          <p className="center muted">Hosted by Vitthal Diwedi · Har game ka apna champion — Winners Board par naam</p>
         </section>
       )}
 

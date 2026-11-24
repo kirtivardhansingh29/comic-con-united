@@ -8,7 +8,7 @@ const archivo = Archivo({ subsets: ["latin"], variable: "--font-body" });
 export const metadata: Metadata = {
   title: "Comic Con United — Live Quiz",
   description:
-    "Comic Con United: ek fan-run live online quiz. Har game ka apna champion 🏆 Winners Board par naam — Delhi Comic Con 2026. Hosted by Vitthal Diwedi.",
+    "Comic Con United: ek fan-run live online quiz. Har game ka apna champion — Winners Board par naam. Delhi Comic Con 2026. Hosted by Vitthal Diwedi.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

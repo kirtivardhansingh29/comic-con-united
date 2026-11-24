@@ -48,6 +48,24 @@ export default async function Home() {
       <div className="event-strip">DELHI COMIC CON 2026 · 5–6 DEC · NSIC GROUNDS, OKHLA</div>
       <div className="prize-strip">Har game ka apna champion 🏆 Winners Board par naam</div>
 
+      <section className="panel" style={{ textAlign: "center", borderColor: "#e63b2e" }}>
+        <h3>📋 Pehle Registration Form Bharo!</h3>
+        <p>
+          Event me hissa lene ke liye pehle ye chhota sa form bharna zaroori hai — naam,
+          number aur tumhari details. Form bhare bina entry nahi milegi.
+        </p>
+        <p>
+          <a
+            className="btn red"
+            href="https://forms.gle/J9KVpJu8v8XEzpsJ6"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Registration Form Kholo →
+          </a>
+        </p>
+      </section>
+
       {/* ---------- MODES ---------- */}
       <div className="mode-grid">
         <Link href="/live" className="panel mode-card yellow">
@@ -180,8 +198,7 @@ export default async function Home() {
 
       <footer className="site">
         <p>
-          <strong>Comic Con United</strong> — Hosted by Vitthal Diwedi. Har game ka apna champion
-          — Winners Board par naam.
+          <strong>Comic Con United</strong> — Hosted by Vitthal Diwedi. Har game ka apna champion — Winners Board par naam.
         </p>
         <p className="muted">
           Ye ek fan activity hai, Comic Con India ka official event nahi hai. Event ki sahi
