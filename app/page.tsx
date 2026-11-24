@@ -36,6 +36,7 @@ export default function Home() {
         </p>
       </section>
 
+      <div className="event-strip">DELHI COMIC CON 2026 · 5–6 DEC · NSIC GROUNDS, OKHLA</div>
       <div className="prize-strip">Chance to Win Free Passes for Day 1</div>
 
       {/* ---------- MODES ---------- */}
@@ -120,7 +121,7 @@ export default function Home() {
           <img
             src="/delhi-comic-con-logo.png"
             alt="Delhi Comic Con official logo"
-            style={{ width: 220, maxWidth: "70%", display: "block", marginBottom: 8, marginTop: 16 }}
+            style={{ width: 340, maxWidth: "100%", display: "block", marginBottom: 8, marginTop: 16 }}
           />
           <strong>Delhi Comic Con — Official Event Logo · Sirf Jaankari Ke Liye</strong>
         </div>
