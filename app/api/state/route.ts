@@ -1,54 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadState, ranked, QUESTION_MS } from "@/lib/store";
+import { loadRoom, ranked, remainingMs, QUESTION_MS } from "@/lib/store";
 import { QUESTIONS } from "@/lib/questions";
 
 export const dynamic = "force-dynamic";
 
 // Public room view. The correct answer is included ONLY in the reveal /
 // finished phases — during a live question it never leaves the server.
+// Scores, however, are live by design: an answer is scored by the server the
+// moment it lands, and the question-phase "liveLeaderboard" reflects that.
 export async function GET(req: NextRequest) {
   const pid = req.nextUrl.searchParams.get("pid") || "";
-  const s = await loadState();
-  const board = ranked(s.participants);
-  const inQuestion = s.phase === "question" || s.phase === "reveal";
-  const q = inQuestion && s.qIndex >= 0 ? QUESTIONS[s.qIndex] : null;
-  const myAnswer = pid && s.answers[pid] ? s.answers[pid] : null;
+  const { meta, participants, answers, answeredCount } = await loadRoom();
+  const board = ranked(participants);
+  const boardView = board.map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score }));
+  const inQuestion = meta.phase === "question" || meta.phase === "reveal";
+  const q = inQuestion && meta.qIndex >= 0 ? QUESTIONS[meta.qIndex] : null;
+  const myAnswer = pid ? answers[pid] ?? null : null;
+  const revealed = meta.phase === "reveal" || meta.phase === "finished";
+  const paused = meta.pausedAt != null;
 
   return NextResponse.json({
-    phase: s.phase,
-    hostReady: s.pinHash !== null,
-    participantCount: s.participants.length,
-    participants: s.participants.map((p) => ({ id: p.id, name: p.name })),
+    phase: meta.phase,
+    paused,
+    hostReady: meta.pinHash !== null,
+    participantCount: participants.length,
+    participants: participants.map((p) => ({ id: p.id, name: p.name })),
     question:
-      q && s.qIndex >= 0
+      q && meta.qIndex >= 0
         ? {
-            index: s.qIndex,
+            index: meta.qIndex,
             total: QUESTIONS.length,
             category: q.category,
             text: q.text,
             options: q.options,
-            startedAt: s.qStartedAt,
+            startedAt: meta.qStartedAt,
             durationMs: QUESTION_MS,
-            answeredCount: Object.keys(s.answers).length,
+            answeredCount,
+            paused,
+            remainingMs: remainingMs(meta, Date.now()),
             // revealed only after the host hits reveal:
-            correctIndex: s.phase === "reveal" || s.phase === "finished" ? q.correct : undefined,
+            correctIndex: revealed ? q.correct : undefined,
           }
         : null,
     myAnswer: myAnswer
       ? {
           choice: myAnswer.choice,
           // points/correctness stay hidden until reveal:
-          points: s.phase === "reveal" || s.phase === "finished" ? myAnswer.points : undefined,
-          correct: s.phase === "reveal" || s.phase === "finished" ? myAnswer.correct : undefined,
+          points: revealed ? myAnswer.points : undefined,
+          correct: revealed ? myAnswer.correct : undefined,
         }
       : null,
-    leaderboard:
-      s.phase === "reveal" || s.phase === "finished"
-        ? board.map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score }))
-        : null,
-    podium:
-      s.phase === "finished"
-        ? board.slice(0, 3).map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score }))
-        : null,
+    // Live ranking during a question: scores already include points from
+    // answers scored so far in the current question (server scores at
+    // submission time), so ranks move the moment a player answers.
+    liveLeaderboard: meta.phase === "question" ? boardView : null,
+    leaderboard: revealed ? boardView : null,
+    podium: meta.phase === "finished" ? boardView.slice(0, 3) : null,
   });
 }

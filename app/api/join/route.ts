@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadState, saveState, newId, MAX_PARTICIPANTS } from "@/lib/store";
+import { joinPlayer } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -14,20 +14,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "10-digit wala mobile number daalo." }, { status: 400 });
   }
 
-  const s = await loadState();
-  if (s.phase === "finished") {
+  // Concurrency-safe: the store claims the phone atomically and writes this
+  // player into their own hash field — simultaneous joins cannot collide.
+  const res = await joinPlayer(name, phone);
+  if (res.status === "finished") {
     return NextResponse.json({ ok: false, error: "Game khatam ho chuka hai." }, { status: 409 });
   }
-  // Same phone number rejoining = same player (page refresh safe).
-  const existing = s.participants.find((p) => p.phone === phone);
-  if (existing) {
-    return NextResponse.json({ ok: true, participant: { id: existing.id, name: existing.name }, rejoined: true });
-  }
-  if (s.participants.length >= MAX_PARTICIPANTS) {
+  if (res.status === "full") {
     return NextResponse.json({ ok: false, error: "Room full ho gaya hai." }, { status: 409 });
   }
-  const p = { id: newId(), name, phone, score: 0, joinedAt: Date.now() };
-  s.participants.push(p);
-  await saveState(s);
-  return NextResponse.json({ ok: true, participant: { id: p.id, name: p.name } });
+  return NextResponse.json({
+    ok: true,
+    participant: { id: res.participant.id, name: res.participant.name },
+    rejoined: res.status === "rejoined",
+  });
 }

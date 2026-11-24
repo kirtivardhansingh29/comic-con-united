@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+interface BoardRow { rank: number; id: string; name: string; score: number }
+
 interface StateView {
   phase: "lobby" | "question" | "reveal" | "finished";
+  paused: boolean;
   participantCount: number;
   participants: { id: string; name: string }[];
   question: {
@@ -16,11 +19,14 @@ interface StateView {
     startedAt: number | null;
     durationMs: number;
     answeredCount: number;
+    paused: boolean;
+    remainingMs: number;
     correctIndex?: number;
   } | null;
   myAnswer: { choice: number; points?: number; correct?: boolean } | null;
-  leaderboard: { rank: number; id: string; name: string; score: number }[] | null;
-  podium: { rank: number; id: string; name: string; score: number }[] | null;
+  liveLeaderboard: BoardRow[] | null;
+  leaderboard: BoardRow[] | null;
+  podium: BoardRow[] | null;
 }
 
 export default function LivePage() {
@@ -125,9 +131,27 @@ export default function LivePage() {
   }
 
   const q = view?.question;
-  const timeLeft =
-    q?.startedAt != null ? Math.max(0, q.durationMs - (nowMs - q.startedAt)) : 0;
+  const isPaused = !!q?.paused;
+  // While paused the server freezes the clock: trust its remainingMs as-is.
+  const timeLeft = !q
+    ? 0
+    : isPaused
+      ? q.remainingMs
+      : q.startedAt != null
+        ? Math.max(0, q.durationMs - (nowMs - q.startedAt))
+        : 0;
   const locked = picked !== null || !!view?.myAnswer;
+
+  // Live ranking rows for the question phase: top 5, plus my own row if I
+  // am outside the top 5.
+  const liveRows: BoardRow[] = (() => {
+    const lb = view?.liveLeaderboard;
+    if (!lb) return [];
+    const top = lb.slice(0, 5);
+    const mine = lb.find((r) => r.id === pid);
+    if (mine && !top.some((r) => r.id === mine.id)) return [...top, mine];
+    return top;
+  })();
 
   return (
     <main className="narrow">
@@ -178,21 +202,47 @@ export default function LivePage() {
           <div className="timerbar">
             <div style={{ width: `${(timeLeft / q.durationMs) * 100}%` }} />
           </div>
-          <p className="muted center" style={{ margin: 0 }}>
-            {locked ? "Jawab lock ho gaya — reveal ka wait karo." : `${Math.ceil(timeLeft / 1000)} second bache — tez jawab, zyada points!`}
-          </p>
+          {isPaused ? (
+            <div className="okmsg center" role="alert" style={{ fontSize: "1.1rem" }}>
+              ⏸ Host ne quiz pause kiya hai — thoda ruko!
+              <br />
+              <span className="muted">Timer ruk gaya hai — resume hote hi bache hue {Math.ceil(timeLeft / 1000)} second phir milenge.</span>
+            </div>
+          ) : (
+            <p className="muted center" style={{ margin: 0 }}>
+              {locked ? "Jawab lock ho gaya — reveal ka wait karo." : `${Math.ceil(timeLeft / 1000)} second bache — tez jawab, zyada points!`}
+            </p>
+          )}
           <div className="options">
             {q.options.map((opt, i) => (
               <button
                 key={i}
                 className={`opt c${i % 4} ${picked === i ? "picked" : ""}`}
-                disabled={locked || timeLeft <= 0}
+                disabled={locked || timeLeft <= 0 || isPaused}
                 onClick={() => answer(i)}
               >
                 {opt}
               </button>
             ))}
           </div>
+          {liveRows.length > 0 && (
+            <>
+              <h3 style={{ marginTop: 18 }}>Live Ranking</h3>
+              <table className="board">
+                <thead>
+                  <tr><th>#</th><th>Player</th><th>Score</th></tr>
+                </thead>
+                <tbody>
+                  {liveRows.map((r) => (
+                    <tr key={r.id} className={r.id === pid ? "me" : ""}>
+                      <td>{r.rank}</td><td>{r.name}</td><td>{r.score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="muted center" style={{ marginBottom: 0 }}>Score jawab dete hi live badalta hai.</p>
+            </>
+          )}
         </section>
       )}
 

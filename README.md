@@ -12,13 +12,19 @@ Muse artifact runtime and deploys to Vercel as-is.
 - **Home** — comic-cover hero, prize strip, 8-hero character gallery,
   event details, and the official Comic Con India logo shown **only** as an
   information card inside Event Details (never as branding).
-- **Live Quiz** (`/live`) — join → lobby → 14 questions (20s each) → reveal
+- **Live Quiz** (`/live`) — join → lobby → 15 questions (20s each) → reveal
   + leaderboard after every question → Top 3 podium with confetti.
   Scoring is computed on the server: correct = 600 + up to 400 speed bonus.
   The correct answer is never sent to a browser before the reveal phase.
+  During a question, players also see a **Live Ranking** (top 5 + their own
+  row) that updates on every poll — scores move the moment an answer lands.
 - **Host panel** (`/host`) — first use sets a 4–6 digit PIN (stored hashed
   in Redis). The same PIN unlocks start / reveal / next / finish / clear,
   the participants export (copy-text + CSV) and the proof report.
+  Live controls: **Pause / Resume** (the question clock freezes server-side
+  and players keep their remaining seconds), **Skip question**, **End quiz
+  anytime** (straight to the podium), and **remove player** (✕ next to each
+  name in the host's player list).
 - **Proof report** (`/report`) — PIN-gated, print/screenshot-friendly:
   activity, host (Vitthal Diwedi), event, date, participants, questions
   played, total answers, Top 3 with name + phone + score. Made to be shown
@@ -32,8 +38,12 @@ black borders, hard offset shadows, flat red/yellow/blue, Anton + Archivo.
 ## Tech
 
 - Next.js 15 (App Router) + TypeScript
-- Room state in **Upstash Redis** via `@upstash/redis` (single key,
-  24h TTL). Clients poll `/api/state` every 1 second — no websockets.
+- Room state in **Upstash Redis** via `@upstash/redis` (24h TTL), split
+  into structures with atomic per-player writes — a participants hash, a
+  phone→id hash for rejoin dedupe, a scores hash (`HINCRBY`), a per-question
+  answers hash (`HSETNX` is the answer lock) and an `INCR` answer counter —
+  so 50 simultaneous joins/answers cannot overwrite each other. Clients
+  poll `/api/state` every 1 second — no websockets.
 - If the Upstash env vars are missing (local dev only), the app falls back
   to a single-process in-memory store so you can smoke-test. **Never run a
   real event without Upstash** — serverless instances do not share memory.

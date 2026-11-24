@@ -3,13 +3,21 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
-interface HostStatus { phase: string; participantCount: number; qIndex: number; totalQuestions: number }
+interface HostPlayer { id: string; name: string; phone: string; score: number }
+interface HostStatus {
+  phase: string;
+  paused: boolean;
+  participantCount: number;
+  qIndex: number;
+  totalQuestions: number;
+  participants?: HostPlayer[];
+}
 
-async function hostCall(pin: string, action: string) {
+async function hostCall(pin: string, action: string, extra?: Record<string, unknown>) {
   const r = await fetch("/api/host", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pin, action }),
+    body: JSON.stringify({ pin, action, ...extra }),
   });
   return r.json();
 }
@@ -71,13 +79,18 @@ export default function HostPage() {
     }
   }
 
-  async function act(action: string) {
+  async function act(action: string, extra?: Record<string, unknown>) {
     setErr(""); setMsg("");
-    const d = await hostCall(pin, action);
+    const d = await hostCall(pin, action, extra);
     if (d.ok) {
       setMsg(`Ho gaya: ${action} (phase: ${d.phase ?? status?.phase ?? ""})`);
       refresh(pin);
     } else setErr(d.error || "Action fail ho gaya.");
+  }
+
+  async function removePlayer(p: HostPlayer) {
+    if (!confirm(`${p.name} ko room se hata dein? Unke answers aur score bhi chale jayenge.`)) return;
+    await act("removePlayer", { pid: p.id });
   }
 
   async function doExport() {
@@ -126,8 +139,9 @@ export default function HostPage() {
           <>
             <p>
               <span className="chip yellow">Phase: {status?.phase ?? "…"}</span>
+              {status?.paused && <span className="chip red">⏸ Paused</span>}
               <span className="chip">Players: {status?.participantCount ?? 0}</span>
-              <span className="chip">Sawal: {status ? status.qIndex + 1 : 0} / {status?.totalQuestions ?? 14}</span>
+              <span className="chip">Sawal: {status ? status.qIndex + 1 : 0} / {status?.totalQuestions ?? 15}</span>
             </p>
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
               <button className="btn red" onClick={() => act("start")}>Quiz start</button>
@@ -135,6 +149,50 @@ export default function HostPage() {
               <button className="btn" onClick={() => act("next")}>Agla sawal</button>
               <button className="btn paper" onClick={() => act("finish")}>Finish / Podium</button>
             </div>
+            <h3 style={{ marginTop: 18 }}>Live controls</h3>
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+              {status?.paused ? (
+                <button className="btn red" onClick={() => act("resume")}>▶ Resume quiz</button>
+              ) : (
+                <button className="btn blue" onClick={() => act("pause")}>⏸ Pause quiz</button>
+              )}
+              <button className="btn" onClick={() => act("skip")}>⏭ Skip sawal</button>
+              <button
+                className="btn paper"
+                onClick={() => { if (confirm("Quiz abhi khatam kar dein? Seedha podium khul jayega.")) act("finish"); }}
+              >
+                🏁 End quiz abhi
+              </button>
+            </div>
+            {status?.participants && status.participants.length > 0 && (
+              <div>
+                <h3 style={{ marginTop: 18 }}>Players — galat/bina-naam wale ko hatao</h3>
+                <table className="board">
+                  <thead>
+                    <tr><th>Player</th><th>Score</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    {status.participants.map((p) => (
+                      <tr key={p.id}>
+                        <td>{p.name} <span className="muted">({p.phone})</span></td>
+                        <td>{p.score}</td>
+                        <td style={{ width: 52 }}>
+                          <button
+                            className="btn paper"
+                            style={{ padding: "2px 10px" }}
+                            title={`${p.name} ko hatao`}
+                            aria-label={`${p.name} ko hatao`}
+                            onClick={() => removePlayer(p)}
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <p style={{ marginTop: 14 }}>
               <button className="btn paper" onClick={doExport}>Participants export</button>{" "}
               <Link className="btn paper" href={`/report?pin=${encodeURIComponent(pin)}`}>Proof report kholo</Link>
