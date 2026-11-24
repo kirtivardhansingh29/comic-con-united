@@ -7,11 +7,20 @@ interface HostPlayer { id: string; name: string; phone: string; score: number }
 interface HostStatus {
   phase: string;
   paused: boolean;
+  mode: string;
+  modeLabel: string;
   participantCount: number;
   qIndex: number;
   totalQuestions: number;
+  clueStage: number;
   participants?: HostPlayer[];
 }
+
+const MODES = [
+  { id: "quiz", label: "Live Quiz (30 sawal)" },
+  { id: "clue", label: "Clue Race — Kaun Hai Ye?" },
+  { id: "poll", label: "Janta Poll Battle" },
+] as const;
 
 async function hostCall(pin: string, action: string, extra?: Record<string, unknown>) {
   const r = await fetch("/api/host", {
@@ -139,24 +148,47 @@ export default function HostPage() {
           <>
             <p>
               <span className="chip yellow">Phase: {status?.phase ?? "…"}</span>
+              <span className="chip red">Game: {status?.modeLabel ?? "…"}</span>
               {status?.paused && <span className="chip red">⏸ Paused</span>}
               <span className="chip">Players: {status?.participantCount ?? 0}</span>
-              <span className="chip">Sawal: {status ? status.qIndex + 1 : 0} / {status?.totalQuestions ?? 15}</span>
+              <span className="chip">Item: {status ? status.qIndex + 1 : 0} / {status?.totalQuestions ?? 0}</span>
             </p>
+            {status?.phase === "lobby" && (
+              <div>
+                <h3 style={{ marginTop: 6 }}>Kaunsa game chalana hai?</h3>
+                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr 1fr" }}>
+                  {MODES.map((m) => (
+                    <button
+                      key={m.id}
+                      className={`btn ${status.mode === m.id ? "red" : "paper"}`}
+                      onClick={() => act("setMode", { mode: m.id })}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="muted">Game lobby me hi badla ja sakta hai. Har game ka apna winner banta hai aur Winners Board par record hota hai.</p>
+              </div>
+            )}
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
-              <button className="btn red" onClick={() => act("start")}>Quiz start</button>
-              <button className="btn blue" onClick={() => act("reveal")}>Reveal jawab</button>
-              <button className="btn" onClick={() => act("next")}>Agla sawal</button>
+              <button className="btn red" onClick={() => act("start")}>Game start</button>
+              <button className="btn blue" onClick={() => act("reveal")}>Reveal / Battle band karo</button>
+              <button className="btn" onClick={() => act("next")}>Agla item</button>
               <button className="btn paper" onClick={() => act("finish")}>Finish / Podium</button>
             </div>
             <h3 style={{ marginTop: 18 }}>Live controls</h3>
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
               {status?.paused ? (
-                <button className="btn red" onClick={() => act("resume")}>▶ Resume quiz</button>
+                <button className="btn red" onClick={() => act("resume")}>▶ Resume game</button>
               ) : (
-                <button className="btn blue" onClick={() => act("pause")}>⏸ Pause quiz</button>
+                <button className="btn blue" onClick={() => act("pause")}>⏸ Pause game</button>
               )}
-              <button className="btn" onClick={() => act("skip")}>⏭ Skip sawal</button>
+              <button className="btn" onClick={() => act("skip")}>⏭ Skip item</button>
+              {status?.mode === "clue" && (
+                <button className="btn blue" onClick={() => act("nextClue")}>
+                  🔍 Agla clue dikhao {status ? `(abhi clue ${status.clueStage + 1}/3)` : ""}
+                </button>
+              )}
               <button
                 className="btn paper"
                 onClick={() => { if (confirm("Quiz abhi khatam kar dein? Seedha podium khul jayega.")) act("finish"); }}

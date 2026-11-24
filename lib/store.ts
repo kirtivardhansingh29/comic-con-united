@@ -1,10 +1,29 @@
 import { Redis } from "@upstash/redis";
 import { createHash, randomUUID } from "crypto";
 
-export const QUESTION_MS = 20000; // 20 second answer window
+export const QUESTION_MS = 20000; // 20 second answer window (quiz)
+export const POLL_MS = 20000; // 20 second voting window (poll battle)
 export const MAX_PARTICIPANTS = 60;
 
+/** Points for a correct Clue Race lock, by the clue stage it was locked at. */
+export const CLUE_POINTS = [1000, 700, 400];
+/** Points every voter on the majority side gets when a poll battle closes. */
+export const POLL_POINTS = 100;
+
 export type Phase = "lobby" | "question" | "reveal" | "finished";
+
+/** The three live games that share one room / join / PIN system. */
+export type GameMode = "quiz" | "clue" | "poll";
+
+export const GAME_LABELS: Record<GameMode, string> = {
+  quiz: "Live Quiz",
+  clue: "Clue Race — Kaun Hai Ye?",
+  poll: "Janta Poll Battle",
+};
+
+export function isGameMode(v: unknown): v is GameMode {
+  return v === "quiz" || v === "clue" || v === "poll";
+}
 
 export interface Participant {
   id: string;
@@ -25,9 +44,12 @@ export interface AnswerRec {
 export interface RoomMeta {
   phase: Phase;
   pinHash: string | null;
-  qIndex: number; // -1 = no question running
+  mode: GameMode; // which of the three games the room is running
+  qIndex: number; // current item index within the active game's bank; -1 = none
   qStartedAt: number | null;
   pausedAt: number | null; // server timestamp when the host paused, else null
+  clueStage: number; // clue mode only: 0, 1 or 2 — which clue is showing
+  itemAwarded: boolean; // poll mode only: majority points for this battle paid out
   questionsPlayed: number;
   createdAt: number;
 }
@@ -36,9 +58,12 @@ export function freshMeta(): RoomMeta {
   return {
     phase: "lobby",
     pinHash: null,
+    mode: "quiz",
     qIndex: -1,
     qStartedAt: null,
     pausedAt: null,
+    clueStage: 0,
+    itemAwarded: false,
     questionsPlayed: 0,
     createdAt: Date.now(),
   };
@@ -53,8 +78,10 @@ export function freshMeta(): RoomMeta {
 //   ccu:v2:participants    HASH    pid   -> {id,name,phone,joinedAt} JSON
 //   ccu:v2:phones          HASH    phone -> pid        (rejoin dedupe claim)
 //   ccu:v2:scores          HASH    pid   -> score      (HINCRBY at answer time)
-//   ccu:v2:answers:<q>     HASH    pid   -> AnswerRec JSON (HSETNX = the lock)
+//   ccu:v2:answers:<mode>:<i> HASH pid   -> AnswerRec JSON (HSETNX = the lock)
+//   ccu:v2:votes:<i>       HASH    pid   -> 0 | 1  (poll battle side, HSETNX)
 //   ccu:v2:totalAnswers    STRING  counter (INCR per accepted answer)
+//   ccu:v2:winners         HASH    game  -> WinnerEntry JSON (survives clears)
 // ---------------------------------------------------------------------------
 
 const META_KEY = "ccu:v2:meta";
@@ -62,7 +89,12 @@ const PARTS_KEY = "ccu:v2:participants";
 const PHONES_KEY = "ccu:v2:phones";
 const SCORES_KEY = "ccu:v2:scores";
 const TOTAL_KEY = "ccu:v2:totalAnswers";
-const answersKey = (q: number) => `ccu:v2:answers:${q}`;
+const WINNERS_KEY = "ccu:v2:winners";
+const answersKey = (mode: GameMode, idx: number) => `ccu:v2:answers:${mode}:${idx}`;
+const votesKey = (idx: number) => `ccu:v2:votes:${idx}`;
+const ALL_MODES: GameMode[] = ["quiz", "clue", "poll"];
+const MAX_BANK = 30; // largest bank (quiz); used for cleanup sweeps
+const MAX_BATTLES = 8; // poll bank size; used for cleanup sweeps
 const TTL_SECONDS = 60 * 60 * 24; // 24h
 
 // --- Backend abstraction: Upstash Redis when configured, in-memory otherwise.
@@ -251,7 +283,10 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 
 export async function getMeta(): Promise<RoomMeta> {
   const m = (await backend.get(META_KEY)) as RoomMeta | null;
-  return m ?? freshMeta();
+  if (!m) return freshMeta();
+  // Merge over fresh defaults so metas written before a field existed
+  // (e.g. mode / clueStage) still read back complete.
+  return { ...freshMeta(), ...m };
 }
 
 export async function setMeta(meta: RoomMeta): Promise<void> {
@@ -336,15 +371,20 @@ export async function joinPlayer(name: string, phone: string): Promise<JoinResul
   return { status: "joined", participant: { ...rec, score: 0 } };
 }
 
-/** Remove a participant and everything attached to them (scores + answers). */
-export async function removePlayer(pid: string, throughQuestion: number): Promise<boolean> {
+/** Remove a participant and everything attached to them (scores, answers, votes). */
+export async function removePlayer(pid: string): Promise<boolean> {
   const rec = (await backend.hget(PARTS_KEY, pid)) as StoredParticipant | null;
   if (!rec) return false;
   await backend.hdel(PARTS_KEY, pid);
   await backend.hdel(SCORES_KEY, pid);
   if (rec.phone) await backend.hdel(PHONES_KEY, rec.phone);
-  for (let q = 0; q <= throughQuestion; q++) {
-    await backend.hdel(answersKey(q), pid);
+  for (const mode of ALL_MODES) {
+    for (let i = 0; i < MAX_BANK; i++) {
+      await backend.hdel(answersKey(mode, i), pid);
+    }
+  }
+  for (let i = 0; i < MAX_BATTLES; i++) {
+    await backend.hdel(votesKey(i), pid);
   }
   return true;
 }
@@ -352,41 +392,89 @@ export async function removePlayer(pid: string, throughQuestion: number): Promis
 // --- Answers -------------------------------------------------------------------
 
 /**
- * Atomic answer submission: HSETNX on the per-question answers hash is the
+ * Atomic answer submission: HSETNX on the per-item answers hash is the
  * lock (a second submission from the same player is rejected), then the score
  * is bumped with HINCRBY and the game-wide counter with INCR. No step reads
  * and rewrites another player's data.
  */
-export async function submitAnswer(qIndex: number, rec: AnswerRec): Promise<boolean> {
-  const added = await backend.hsetnx(answersKey(qIndex), rec.pid, rec);
+export async function submitAnswer(mode: GameMode, idx: number, rec: AnswerRec): Promise<boolean> {
+  const key = answersKey(mode, idx);
+  const added = await backend.hsetnx(key, rec.pid, rec);
   if (!added) return false;
   await backend.hincrby(SCORES_KEY, rec.pid, rec.points);
   await backend.incr(TOTAL_KEY);
-  await backend.touch([answersKey(qIndex), SCORES_KEY, TOTAL_KEY]);
+  await backend.touch([key, SCORES_KEY, TOTAL_KEY]);
   return true;
 }
 
-export async function getAnswers(qIndex: number): Promise<Record<string, AnswerRec>> {
-  const all = await backend.hgetall(answersKey(qIndex));
+export async function getAnswers(mode: GameMode, idx: number): Promise<Record<string, AnswerRec>> {
+  const all = await backend.hgetall(answersKey(mode, idx));
   const out: Record<string, AnswerRec> = {};
   for (const [k, v] of Object.entries(all)) out[k] = v as AnswerRec;
   return out;
 }
 
-export async function getAnswer(qIndex: number, pid: string): Promise<AnswerRec | null> {
-  return (await backend.hget(answersKey(qIndex), pid)) as AnswerRec | null;
-}
-
-export async function getAnsweredCount(qIndex: number): Promise<number> {
-  return backend.hlen(answersKey(qIndex));
+export async function getAnsweredCount(mode: GameMode, idx: number): Promise<number> {
+  return backend.hlen(answersKey(mode, idx));
 }
 
 export async function getTotalAnswers(): Promise<number> {
   return Number((await backend.get(TOTAL_KEY)) ?? 0);
 }
 
-export async function resetAnswers(qIndex: number): Promise<void> {
-  await backend.del([answersKey(qIndex)]);
+export async function resetAnswers(mode: GameMode, idx: number): Promise<void> {
+  await backend.del([answersKey(mode, idx)]);
+}
+
+/** Bump a player's score directly (poll-battle majority payout). */
+export async function awardPoints(pid: string, points: number): Promise<void> {
+  if (points === 0) return;
+  await backend.hincrby(SCORES_KEY, pid, points);
+  await backend.touch([SCORES_KEY]);
+}
+
+// --- Poll battle votes ---------------------------------------------------------
+
+/** Atomic vote: HSETNX is the lock — one vote per player per battle. */
+export async function submitVote(battleIdx: number, pid: string, side: 0 | 1): Promise<boolean> {
+  const key = votesKey(battleIdx);
+  const added = await backend.hsetnx(key, pid, side);
+  if (added) await backend.touch([key]);
+  return added;
+}
+
+export async function getVotes(battleIdx: number): Promise<Record<string, number>> {
+  const all = await backend.hgetall(votesKey(battleIdx));
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(all)) out[k] = Number(v);
+  return out;
+}
+
+export async function resetVotes(battleIdx: number): Promise<void> {
+  await backend.del([votesKey(battleIdx)]);
+}
+
+// --- Winners board (persistent — survives room clears) --------------------------
+
+export interface WinnerEntry {
+  game: GameMode;
+  gameLabel: string;
+  name: string;
+  phone: string;
+  score: number;
+  at: number; // server timestamp when the game finished
+}
+
+/** Record (or replace) the latest winner of one game. Never cleared by clearRoom. */
+export async function recordWinner(entry: WinnerEntry): Promise<void> {
+  await backend.hset(WINNERS_KEY, entry.game, entry);
+  await backend.touch([WINNERS_KEY]);
+}
+
+/** Latest winner per game, in quiz → clue → poll order; missing games omitted. */
+export async function getWinners(): Promise<WinnerEntry[]> {
+  const all = await backend.hgetall(WINNERS_KEY);
+  return ALL_MODES.filter((g) => all[g]).map((g) => all[g] as WinnerEntry);
 }
 
 // --- Whole room ------------------------------------------------------------------
@@ -396,6 +484,7 @@ export interface RoomSnapshot {
   participants: Participant[];
   answers: Record<string, AnswerRec>;
   answeredCount: number;
+  votes: Record<string, number>;
   totalAnswers: number;
 }
 
@@ -403,20 +492,26 @@ export interface RoomSnapshot {
 export async function loadRoom(): Promise<RoomSnapshot> {
   const meta = await getMeta();
   const qi = Math.max(0, meta.qIndex);
-  const [participants, answers, totalAnswers] = await Promise.all([
+  const [participants, answers, votes, totalAnswers] = await Promise.all([
     getParticipants(),
-    meta.qIndex >= 0 ? getAnswers(qi) : Promise.resolve({} as Record<string, AnswerRec>),
+    meta.qIndex >= 0 && meta.mode !== "poll"
+      ? getAnswers(meta.mode, qi)
+      : Promise.resolve({} as Record<string, AnswerRec>),
+    meta.qIndex >= 0 && meta.mode === "poll"
+      ? getVotes(qi)
+      : Promise.resolve({} as Record<string, number>),
     getTotalAnswers(),
   ]);
-  return { meta, participants, answers, answeredCount: Object.keys(answers).length, totalAnswers };
+  return { meta, participants, answers, answeredCount: Object.keys(answers).length, votes, totalAnswers };
 }
 
-/** Wipe the room but keep the host PIN. */
+/** Wipe the room but keep the host PIN — and keep the recorded winners. */
 export async function clearRoom(pinHash: string | null): Promise<RoomMeta> {
-  const meta = await getMeta();
   const keys = [META_KEY, PARTS_KEY, PHONES_KEY, SCORES_KEY, TOTAL_KEY];
-  const lastQ = Math.max(meta.qIndex, meta.questionsPlayed - 1);
-  for (let q = 0; q <= lastQ; q++) keys.push(answersKey(q));
+  for (const mode of ALL_MODES) {
+    for (let i = 0; i < MAX_BANK; i++) keys.push(answersKey(mode, i));
+  }
+  for (let i = 0; i < MAX_BATTLES; i++) keys.push(votesKey(i));
   await backend.del(keys);
   const fresh = freshMeta();
   fresh.pinHash = pinHash;
@@ -429,9 +524,9 @@ export function ranked(participants: Participant[]): Participant[] {
   return [...participants].sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt);
 }
 
-/** Milliseconds left in the current question, honouring a host pause. */
-export function remainingMs(meta: RoomMeta, now: number): number {
+/** Milliseconds left in the current item, honouring a host pause. */
+export function remainingMs(meta: RoomMeta, now: number, durationMs: number = QUESTION_MS): number {
   if (meta.qStartedAt == null) return 0;
   const end = meta.pausedAt ?? now;
-  return Math.max(0, QUESTION_MS - (end - meta.qStartedAt));
+  return Math.max(0, durationMs - (end - meta.qStartedAt));
 }

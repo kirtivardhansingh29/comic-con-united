@@ -106,4 +106,95 @@ export const QUESTIONS: Question[] = [
     options: ["Light", "Tube", "Batti", "Bijli"],
     correct: 2,
   },
+  // --- Round 2 additions (bank now 30) ---
+  {
+    category: "Nerd Quiz",
+    text: "Naruto ka sabse khaas jutsu kaun sa hai?",
+    options: ["Rasengan", "Shadow Clone Jutsu (Kage Bunshin)", "Chidori", "Fireball Jutsu"],
+    correct: 1,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Goku ka sabse mashhoor attack kaun sa hai?",
+    options: ["Kamehameha", "Special Beam Cannon", "Destructo Disc", "Final Flash"],
+    correct: 0,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Luffy ke crew ka naam kya hai?",
+    options: ["Red Hair Pirates", "Whitebeard Pirates", "Straw Hat Pirates (Mugiwara)", "Heart Pirates"],
+    correct: 2,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Pikachu kis type ka Pokemon hai?",
+    options: ["Fire", "Water", "Grass", "Electric"],
+    correct: 3,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Shaktimaan ka asal naam kya hai?",
+    options: ["Pandit Gangadhar", "Raj", "Major Aditya", "Pandit Trilok"],
+    correct: 0,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Chhota Bheem kahan rehta hai?",
+    options: ["Pehelwanpur", "Dholakpur", "Fatehpur", "Chandanpur"],
+    correct: 1,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Iron Man ka asal naam kya hai?",
+    options: ["Steve Rogers", "Bruce Banner", "Tony Stark", "Clint Barton"],
+    correct: 2,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Captain America ki shield kis metal se bani hai?",
+    options: ["Adamantium", "Vibranium", "Titanium", "Uru"],
+    correct: 1,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Hulk ka asal naam kya hai?",
+    options: ["Bruce Banner", "Tony Stark", "Peter Parker", "Thor Odinson"],
+    correct: 0,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Kis MCU film me pehli baar saare Avengers ek saath aaye?",
+    options: ["Iron Man 2", "Avengers: Age of Ultron", "The Avengers (2012)", "Captain America: Civil War"],
+    correct: 2,
+  },
+  {
+    category: "Sach Ya Jhooth",
+    text: "Sach ya Jhooth: Batman ke paas koi superpower nahi hai.",
+    options: ["Sach", "Jhooth"],
+    correct: 0, // true — he relies on money, training and gadgets
+  },
+  {
+    category: "Sach Ya Jhooth",
+    text: "Sach ya Jhooth: Doraemon ki 4D jeb se kuch bhi nikal sakta hai.",
+    options: ["Sach", "Jhooth"],
+    correct: 0, // true — the 4D pocket holds any gadget
+  },
+  {
+    category: "Ulta-Pulta Naam",
+    text: "TANBA ko sudharo — hero ka sahi naam kya hai?",
+    options: ["Bantan", "Batman", "Tabna", "Natab"],
+    correct: 1,
+  },
+  {
+    category: "Dialogue Pura Karo",
+    text: "Avengers… ________!",
+    options: ["Charge", "Attack", "Assemble", "Together"],
+    correct: 2,
+  },
+  {
+    category: "Emoji Pehchano",
+    text: "🦇 🌃 🧑 — ye hero kaun hai?",
+    options: ["Spider-Man", "Superman", "Batman", "Nightwing"],
+    correct: 2,
+  },
 ];

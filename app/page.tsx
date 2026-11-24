@@ -1,4 +1,11 @@
 import Link from "next/link";
+import { getWinners, GAME_LABELS, type GameMode } from "@/lib/store";
+
+// The winners board reads the live winners store, so this page must render
+// per-request rather than being prerendered at build time.
+export const dynamic = "force-dynamic";
+
+const GAME_ORDER: GameMode[] = ["quiz", "clue", "poll"];
 
 const CHARS = [
   { img: "/chars/nagraj.jpg", name: "Nagraj", line: "Shareer me saanp, seene me desh-bhakti ki aag.", tag: "Raj Comics" },
@@ -11,7 +18,9 @@ const CHARS = [
   { img: "/chars/doraemon.jpg", name: "Doraemon", line: "4D pocket me har problem ka gadget.", tag: "Anime" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const winners = await getWinners().catch(() => []);
+  const winnerByGame = new Map(winners.map((w) => [w.game, w]));
   return (
     <main className="wrap">
       {/* ---------- HERO: comic cover ---------- */}
@@ -44,10 +53,26 @@ export default function Home() {
         <Link href="/live" className="panel mode-card yellow">
           <h3>Live Quiz</h3>
           <p>
-            Sabke phone par ek saath sawal, 20 second ka timer, tez jawab = zyada points.
+            Sabke phone par ek saath 30 sawal, 20 second ka timer, tez jawab = zyada points.
             Host ke start karte hi game live ho jata hai.
           </p>
           <span className="btn red">Quiz join karo</span>
+        </Link>
+        <Link href="/live" className="panel mode-card">
+          <h3>Clue Race — Kaun Hai Ye?</h3>
+          <p>
+            Ek character, teen clues. Jitni jaldi pehchanoge utne zyada points — pehle clue
+            par 1000, aakhri par sirf 400. Risk tumhara, inaam bhi tumhara.
+          </p>
+          <span className="btn blue">Clue Race join karo</span>
+        </Link>
+        <Link href="/live" className="panel mode-card">
+          <h3>Janta Poll Battle</h3>
+          <p>
+            Goku vs Naruto, Batman vs Iron Man — janta vote karegi live, aur majority side
+            ke har voter ko +100 points. Har battle ek chhota chunav hai.
+          </p>
+          <span className="btn blue">Poll Battle join karo</span>
         </Link>
         <Link href="/arena" className="panel mode-card">
           <h3>Arena mode</h3>
@@ -58,6 +83,32 @@ export default function Home() {
           <span className="btn blue">Arena kholo</span>
         </Link>
       </div>
+
+      {/* ---------- WINNERS BOARD ---------- */}
+      <section className="panel">
+        <h2 style={{ fontSize: "1.9rem" }}>🏆 Winners Board</h2>
+        <p className="muted">Teeno games ke champions — har game ka apna winner, yahi board par hamesha ke liye.</p>
+        <div className="mode-grid">
+          {GAME_ORDER.map((g) => {
+            const w = winnerByGame.get(g);
+            return (
+              <div className={`panel mode-card ${w ? "yellow" : ""}`} key={g} style={{ marginBottom: 0 }}>
+                <h3>{GAME_LABELS[g]}</h3>
+                {w ? (
+                  <p>
+                    🏆 <strong>{w.name}</strong>
+                    <br />
+                    {w.score} points ·{" "}
+                    {new Date(w.at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                ) : (
+                  <p className="muted">Abhi tak koi winner nahi — pehle champion tum bano!</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <p className="muted center">
         Host ho? <Link href="/host">Host panel yahan hai</Link> — PIN se control, export aur

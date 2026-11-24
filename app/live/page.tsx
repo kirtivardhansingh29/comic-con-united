@@ -4,10 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 interface BoardRow { rank: number; id: string; name: string; score: number }
+interface WinnerView { game: string; gameLabel: string; name: string; score: number; at: number }
 
 interface StateView {
   phase: "lobby" | "question" | "reveal" | "finished";
   paused: boolean;
+  mode: "quiz" | "clue" | "poll";
+  modeLabel: string;
   participantCount: number;
   participants: { id: string; name: string }[];
   question: {
@@ -23,10 +26,56 @@ interface StateView {
     remainingMs: number;
     correctIndex?: number;
   } | null;
+  clue: {
+    index: number;
+    total: number;
+    stage: number;
+    clues: string[];
+    pointsNow: number;
+    options: string[];
+    answeredCount: number;
+    paused: boolean;
+    correctIndex?: number;
+  } | null;
+  poll: {
+    index: number;
+    total: number;
+    a: string;
+    b: string;
+    votesA: number;
+    votesB: number;
+    totalVotes: number;
+    pctA: number;
+    pctB: number;
+    myVote: number | null;
+    startedAt: number | null;
+    durationMs: number;
+    remainingMs: number;
+    paused: boolean;
+    result: "a" | "b" | "tie" | null;
+  } | null;
   myAnswer: { choice: number; points?: number; correct?: boolean } | null;
   liveLeaderboard: BoardRow[] | null;
   leaderboard: BoardRow[] | null;
   podium: BoardRow[] | null;
+  winners: WinnerView[];
+}
+
+function Board({ rows, pid, limit }: { rows: BoardRow[]; pid: string; limit?: number }) {
+  return (
+    <table className="board">
+      <thead>
+        <tr><th>#</th><th>Player</th><th>Score</th></tr>
+      </thead>
+      <tbody>
+        {(limit ? rows.slice(0, limit) : rows).map((r) => (
+          <tr key={r.id} className={r.id === pid ? "me" : ""}>
+            <td>{r.rank}</td><td>{r.name}</td><td>{r.score}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 export default function LivePage() {
@@ -37,6 +86,7 @@ export default function LivePage() {
   const [err, setErr] = useState("");
   const [joining, setJoining] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
+  const [voted, setVoted] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const confettiDone = useRef(false);
 
@@ -66,11 +116,12 @@ export default function LivePage() {
     return () => clearInterval(t);
   }, []);
 
-  // reset my pick when a new question starts
-  const qIndex = view?.question?.index ?? -1;
+  // reset my pick/vote when a new item starts
+  const itemKey = `${view?.mode}:${view?.question?.index ?? view?.clue?.index ?? view?.poll?.index ?? -1}`;
   useEffect(() => {
     setPicked(null);
-  }, [qIndex]);
+    setVoted(null);
+  }, [itemKey]);
 
   // confetti once, when the podium appears
   useEffect(() => {
@@ -130,17 +181,43 @@ export default function LivePage() {
     }
   }
 
+  async function vote(side: number) {
+    if (voted !== null) return;
+    setVoted(side);
+    try {
+      const r = await fetch("/api/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pid, side }),
+      });
+      const data = await r.json();
+      if (!data.ok) {
+        setErr(data.error || "Vote lock nahi hua.");
+        setVoted(null);
+      }
+    } catch {
+      setErr("Network problem — vote shayad nahi gaya.");
+      setVoted(null);
+    }
+  }
+
   const q = view?.question;
-  const isPaused = !!q?.paused;
-  // While paused the server freezes the clock: trust its remainingMs as-is.
-  const timeLeft = !q
+  const c = view?.clue;
+  const p = view?.poll;
+  const paused = !!view?.paused;
+
+  // Timed items (quiz + poll) share the countdown math; clue has no timer.
+  const timed = q ?? p;
+  const isPausedTimed = !!timed?.paused;
+  const timeLeft = !timed
     ? 0
-    : isPaused
-      ? q.remainingMs
-      : q.startedAt != null
-        ? Math.max(0, q.durationMs - (nowMs - q.startedAt))
+    : isPausedTimed
+      ? timed.remainingMs
+      : timed.startedAt != null
+        ? Math.max(0, timed.durationMs - (nowMs - timed.startedAt))
         : 0;
   const locked = picked !== null || !!view?.myAnswer;
+  const myVote = voted ?? p?.myVote ?? null;
 
   // Live ranking rows for the question phase: top 5, plus my own row if I
   // am outside the top 5.
@@ -152,6 +229,22 @@ export default function LivePage() {
     if (mine && !top.some((r) => r.id === mine.id)) return [...top, mine];
     return top;
   })();
+
+  const pauseBanner = (
+    <div className="okmsg center" role="alert" style={{ fontSize: "1.1rem" }}>
+      ⏸ Host ne game pause kiya hai — thoda ruko!
+      <br />
+      <span className="muted">Resume hote hi game wahi se chalega jahan ruka tha.</span>
+    </div>
+  );
+
+  const liveRanking = liveRows.length > 0 && (
+    <>
+      <h3 style={{ marginTop: 18 }}>Live Ranking</h3>
+      <Board rows={liveRows} pid={pid} />
+      <p className="muted center" style={{ marginBottom: 0 }}>Score jawab dete hi live badalta hai.</p>
+    </>
+  );
 
   return (
     <main className="narrow">
@@ -181,17 +274,21 @@ export default function LivePage() {
       {pid && view?.phase === "lobby" && (
         <section className="panel center">
           <h2 style={{ fontSize: "1.8rem" }}>Lobby</h2>
+          <p>
+            <span className="chip red">Aaj ka game: {view.modeLabel}</span>
+          </p>
           <div className="big-count">{view.participantCount}</div>
           <p>players taiyaar hain. Host ke start karne ka intezaar karo — Metro aane wali hai.</p>
           <p>
-            {view.participants.slice(0, 60).map((p) => (
-              <span key={p.id} className={`chip ${p.id === pid ? "yellow" : ""}`}>{p.name}</span>
+            {view.participants.slice(0, 60).map((pl) => (
+              <span key={pl.id} className={`chip ${pl.id === pid ? "yellow" : ""}`}>{pl.name}</span>
             ))}
           </p>
         </section>
       )}
 
-      {pid && view?.phase === "question" && q && (
+      {/* ---------------- QUIZ ---------------- */}
+      {pid && view?.mode === "quiz" && view.phase === "question" && q && (
         <section className="panel">
           <p style={{ marginTop: 0 }}>
             <span className="chip red">{q.category}</span>
@@ -202,13 +299,7 @@ export default function LivePage() {
           <div className="timerbar">
             <div style={{ width: `${(timeLeft / q.durationMs) * 100}%` }} />
           </div>
-          {isPaused ? (
-            <div className="okmsg center" role="alert" style={{ fontSize: "1.1rem" }}>
-              ⏸ Host ne quiz pause kiya hai — thoda ruko!
-              <br />
-              <span className="muted">Timer ruk gaya hai — resume hote hi bache hue {Math.ceil(timeLeft / 1000)} second phir milenge.</span>
-            </div>
-          ) : (
+          {paused ? pauseBanner : (
             <p className="muted center" style={{ margin: 0 }}>
               {locked ? "Jawab lock ho gaya — reveal ka wait karo." : `${Math.ceil(timeLeft / 1000)} second bache — tez jawab, zyada points!`}
             </p>
@@ -218,35 +309,18 @@ export default function LivePage() {
               <button
                 key={i}
                 className={`opt c${i % 4} ${picked === i ? "picked" : ""}`}
-                disabled={locked || timeLeft <= 0 || isPaused}
+                disabled={locked || timeLeft <= 0 || paused}
                 onClick={() => answer(i)}
               >
                 {opt}
               </button>
             ))}
           </div>
-          {liveRows.length > 0 && (
-            <>
-              <h3 style={{ marginTop: 18 }}>Live Ranking</h3>
-              <table className="board">
-                <thead>
-                  <tr><th>#</th><th>Player</th><th>Score</th></tr>
-                </thead>
-                <tbody>
-                  {liveRows.map((r) => (
-                    <tr key={r.id} className={r.id === pid ? "me" : ""}>
-                      <td>{r.rank}</td><td>{r.name}</td><td>{r.score}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="muted center" style={{ marginBottom: 0 }}>Score jawab dete hi live badalta hai.</p>
-            </>
-          )}
+          {liveRanking}
         </section>
       )}
 
-      {pid && view?.phase === "reveal" && q && (
+      {pid && view?.mode === "quiz" && view.phase === "reveal" && q && (
         <section className="panel">
           <p style={{ marginTop: 0 }}>
             <span className="chip red">{q.category}</span>
@@ -276,51 +350,168 @@ export default function LivePage() {
           {view.leaderboard && (
             <>
               <h3 style={{ marginTop: 18 }}>Leaderboard</h3>
-              <table className="board">
-                <thead>
-                  <tr><th>#</th><th>Player</th><th>Score</th></tr>
-                </thead>
-                <tbody>
-                  {view.leaderboard.slice(0, 10).map((r) => (
-                    <tr key={r.id} className={r.id === pid ? "me" : ""}>
-                      <td>{r.rank}</td><td>{r.name}</td><td>{r.score}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Board rows={view.leaderboard} pid={pid} limit={10} />
             </>
           )}
         </section>
       )}
 
+      {/* ---------------- CLUE RACE ---------------- */}
+      {pid && view?.mode === "clue" && view.phase === "question" && c && (
+        <section className="panel">
+          <p style={{ marginTop: 0 }}>
+            <span className="chip red">Clue Race — Kaun Hai Ye?</span>
+            <span className="chip">Round {c.index + 1} / {c.total}</span>
+            <span className="chip">{c.answeredCount} jawab aa gaye</span>
+          </p>
+          <h2 style={{ fontSize: "1.5rem" }}>Kaun hai ye?</h2>
+          {c.clues.map((clueText, i) => (
+            <p key={i} style={{ fontSize: "1.1rem" }}>
+              <strong>Clue {i + 1}:</strong> {clueText}
+            </p>
+          ))}
+          {paused ? pauseBanner : (
+            <p className="muted center">
+              {locked
+                ? "Jawab lock ho gaya — reveal ka wait karo."
+                : `Abhi lock kiya to ${c.pointsNow} points! Agla clue aaya to points ghat jayenge — risk lo ya ruko, tumhari marzi.`}
+            </p>
+          )}
+          <div className="options">
+            {c.options.map((opt, i) => (
+              <button
+                key={i}
+                className={`opt c${i % 4} ${picked === i ? "picked" : ""}`}
+                disabled={locked || paused}
+                onClick={() => answer(i)}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+          {liveRanking}
+        </section>
+      )}
+
+      {pid && view?.mode === "clue" && view.phase === "reveal" && c && (
+        <section className="panel">
+          <p style={{ marginTop: 0 }}>
+            <span className="chip red">Clue Race — Kaun Hai Ye?</span>
+            <span className="chip">Round {c.index + 1} / {c.total} — Reveal</span>
+          </p>
+          {c.clues.map((clueText, i) => (
+            <p key={i}>
+              <strong>Clue {i + 1}:</strong> {clueText}
+            </p>
+          ))}
+          <div className="options">
+            {c.options.map((opt, i) => (
+              <button
+                key={i}
+                disabled
+                className={`opt ${i === c.correctIndex ? "correct" : view.myAnswer?.choice === i ? "wrong" : ""}`}
+              >
+                {opt} {i === c.correctIndex ? "✓" : ""}
+              </button>
+            ))}
+          </div>
+          {view.myAnswer ? (
+            <p className="center" style={{ fontWeight: 700 }}>
+              {view.myAnswer.correct
+                ? `Sahi pehchan! +${view.myAnswer.points} points`
+                : "Galat pehchan — agla round tumhara hai."}
+            </p>
+          ) : (
+            <p className="center muted">Tumne is round me jawab lock nahi kiya.</p>
+          )}
+          {view.leaderboard && (
+            <>
+              <h3 style={{ marginTop: 18 }}>Leaderboard</h3>
+              <Board rows={view.leaderboard} pid={pid} limit={10} />
+            </>
+          )}
+        </section>
+      )}
+
+      {/* ---------------- POLL BATTLE ---------------- */}
+      {pid && view?.mode === "poll" && (view.phase === "question" || view.phase === "reveal") && p && (
+        <section className="panel">
+          <p style={{ marginTop: 0 }}>
+            <span className="chip red">Janta Poll Battle</span>
+            <span className="chip">Battle {p.index + 1} / {p.total}</span>
+            <span className="chip">{p.totalVotes} votes aa gaye</span>
+          </p>
+          <h2 className="center" style={{ fontSize: "1.6rem" }}>{p.a} <span className="muted">vs</span> {p.b}</h2>
+          {view.phase === "question" && (
+            <>
+              <div className="timerbar">
+                <div style={{ width: `${(timeLeft / p.durationMs) * 100}%` }} />
+              </div>
+              {paused ? pauseBanner : (
+                <p className="muted center" style={{ margin: 0 }}>
+                  {myVote !== null ? "Vote lock ho gaya — janta ka faisla dekho live!" : `${Math.ceil(timeLeft / 1000)} second bache — apni side chuno! Majority side ko +100 points.`}
+                </p>
+              )}
+              <div className="options">
+                <button className={`opt c0 ${myVote === 0 ? "picked" : ""}`} disabled={myVote !== null || timeLeft <= 0 || paused} onClick={() => vote(0)}>
+                  {p.a}
+                </button>
+                <button className={`opt c2 ${myVote === 1 ? "picked" : ""}`} disabled={myVote !== null || timeLeft <= 0 || paused} onClick={() => vote(1)}>
+                  {p.b}
+                </button>
+              </div>
+            </>
+          )}
+          <div style={{ marginTop: 16 }}>
+            <p style={{ margin: "6px 0" }}>
+              <strong>{p.a}</strong> — {p.votesA} votes ({p.pctA}%)
+            </p>
+            <div className="timerbar"><div style={{ width: `${p.pctA}%` }} /></div>
+            <p style={{ margin: "10px 0 6px" }}>
+              <strong>{p.b}</strong> — {p.votesB} votes ({p.pctB}%)
+            </p>
+            <div className="timerbar"><div style={{ width: `${p.pctB}%` }} /></div>
+          </div>
+          {view.phase === "reveal" && (
+            <p className="center" style={{ fontWeight: 700, marginTop: 14 }}>
+              {p.result === "tie"
+                ? "Tie! Kisi ko points nahi mile."
+                : `Janta ka faisla: ${p.result === "a" ? p.a : p.b} jeeta! Us side ke sab voters ko +100 points.`}
+              {myVote !== null && p.result !== "tie" && (
+                <><br />{((p.result === "a" && myVote === 0) || (p.result === "b" && myVote === 1)) ? "Tum jeetne wali side par the — +100! 🎉" : "Tum haarne wali side par the — agli battle tumhari hai."}</>
+              )}
+            </p>
+          )}
+          {view.phase === "question" ? liveRanking : view.leaderboard && (
+            <>
+              <h3 style={{ marginTop: 18 }}>Leaderboard</h3>
+              <Board rows={view.leaderboard} pid={pid} limit={10} />
+            </>
+          )}
+        </section>
+      )}
+
+      {/* ---------------- FINISHED (all games) ---------------- */}
       {pid && view?.phase === "finished" && (
         <section className="panel">
           <h2 className="center" style={{ fontSize: "2rem" }}>Podium — Top 3</h2>
-          <p className="center muted">Last station: Comic Con! In teeno ko Day 1 pass jeetne ka chance milega.</p>
+          <p className="center">
+            <span className="chip red">{view.modeLabel}</span>
+          </p>
+          <p className="center muted">Last station: Comic Con! Winners ko Day 1 pass jeetne ka chance milega.</p>
           <div className="podium">
-            {(view.podium || []).map((p) => (
-              <div key={p.id} className={`panel slot ${p.rank === 1 ? "yellow" : ""}`} style={{ marginBottom: 0 }}>
-                <div className="medal">{p.rank === 1 ? "🥇" : p.rank === 2 ? "🥈" : "🥉"}</div>
-                <h3>{p.name}</h3>
-                <p style={{ margin: 0 }}><strong>{p.score}</strong> points</p>
+            {(view.podium || []).map((pl) => (
+              <div key={pl.id} className={`panel slot ${pl.rank === 1 ? "yellow" : ""}`} style={{ marginBottom: 0 }}>
+                <div className="medal">{pl.rank === 1 ? "🥇" : pl.rank === 2 ? "🥈" : "🥉"}</div>
+                <h3>{pl.name}</h3>
+                <p style={{ margin: 0 }}><strong>{pl.score}</strong> points</p>
               </div>
             ))}
           </div>
           {view.leaderboard && (
             <>
               <h3 style={{ marginTop: 20 }}>Poori leaderboard</h3>
-              <table className="board">
-                <thead>
-                  <tr><th>#</th><th>Player</th><th>Score</th></tr>
-                </thead>
-                <tbody>
-                  {view.leaderboard.map((r) => (
-                    <tr key={r.id} className={r.id === pid ? "me" : ""}>
-                      <td>{r.rank}</td><td>{r.name}</td><td>{r.score}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Board rows={view.leaderboard} pid={pid} />
             </>
           )}
           <p className="center muted">Hosted by Vitthal Diwedi · Chance to Win Free Passes for Day 1</p>

@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+interface ReportWinner { game: string; gameLabel: string; name: string; phone: string; score: number; at: number }
+
 interface Report {
   activity: string;
   host: string;
@@ -13,7 +15,14 @@ interface Report {
   questionsPlayed: number;
   totalAnswers: number;
   top3: { rank: number; name: string; phone: string; score: number }[];
+  winners: ReportWinner[];
 }
+
+const ALL_GAMES = [
+  { game: "quiz", gameLabel: "Live Quiz" },
+  { game: "clue", gameLabel: "Clue Race — Kaun Hai Ye?" },
+  { game: "poll", gameLabel: "Janta Poll Battle" },
+];
 
 function ReportInner() {
   const params = useSearchParams();
@@ -92,6 +101,32 @@ function ReportInner() {
                   <td>{w.score}</td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+          <h3 style={{ marginTop: 24, fontSize: "1.4rem" }}>Har game ka winner</h3>
+          <table className="board">
+            <thead>
+              <tr><th>Game</th><th>Winner</th><th>Phone</th><th>Score</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+              {ALL_GAMES.map((g) => {
+                const w = report.winners.find((x) => x.game === g.game);
+                return (
+                  <tr key={g.game}>
+                    <td>{g.gameLabel}</td>
+                    {w ? (
+                      <>
+                        <td>🏆 {w.name}</td>
+                        <td>{w.phone}</td>
+                        <td>{w.score}</td>
+                        <td>{new Date(w.at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                      </>
+                    ) : (
+                      <td colSpan={4}>Abhi tak ye game khatam nahi hua.</td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <p style={{ marginTop: 16 }}>
