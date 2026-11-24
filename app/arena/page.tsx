@@ -93,7 +93,7 @@ export default function ArenaPage() {
   return (
     <main className="narrow">
       <p><Link href="/">← Home</Link></p>
-      <div className="prize-strip">Chance to Win Free Passes for Day 1</div>
+      <div className="prize-strip">Har game ka apna champion 🏆 Winners Board par naam</div>
 
       {/* Players */}
       <section className="panel">

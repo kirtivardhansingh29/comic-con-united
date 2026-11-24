@@ -2,14 +2,14 @@
 
 A fan-run, mobile-first live quiz for the Delhi Comic Con 2026 activity.
 ~50 players join on their phones with name + phone, a host runs the game
-with a PIN, and the Top 3 win a **Chance to Win Free Passes for Day 1**.
+with a PIN, and each game crowns its own champion on the Winners Board.
 
 This is a fresh, standalone Next.js app — it has no dependency on any
 Muse artifact runtime and deploys to Vercel as-is.
 
 ## What is inside
 
-- **Home** — comic-cover hero, prize strip, 8-hero character gallery,
+- **Home** — comic-cover hero, champion strip, 8-hero character gallery,
   event details, and the official Comic Con India logo shown **only** as an
   information card inside Event Details (never as branding).
 - **Live Quiz** (`/live`) — join → lobby → 15 questions (20s each) → reveal

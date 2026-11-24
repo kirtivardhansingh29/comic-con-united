@@ -30,7 +30,7 @@ export default async function Home() {
           <span>·</span>
           <span>50 fans</span>
           <span>·</span>
-          <span>1 mauka</span>
+          <span>3 games</span>
           <span style={{ marginLeft: "auto" }}>Online edition</span>
         </div>
         <h1 className="display">Comic Con United</h1>
@@ -46,7 +46,7 @@ export default async function Home() {
       </section>
 
       <div className="event-strip">DELHI COMIC CON 2026 · 5–6 DEC · NSIC GROUNDS, OKHLA</div>
-      <div className="prize-strip">Chance to Win Free Passes for Day 1</div>
+      <div className="prize-strip">Har game ka apna champion 🏆 Winners Board par naam</div>
 
       {/* ---------- MODES ---------- */}
       <div className="mode-grid">
@@ -180,8 +180,8 @@ export default async function Home() {
 
       <footer className="site">
         <p>
-          <strong>Comic Con United</strong> — Hosted by Vitthal Diwedi. Chance to Win Free
-          Passes for Day 1 — Top 3 players ko mauka milega, guarantee kisi ki nahi.
+          <strong>Comic Con United</strong> — Hosted by Vitthal Diwedi. Har game ka apna champion
+          — Winners Board par naam.
         </p>
         <p className="muted">
           Ye ek fan activity hai, Comic Con India ka official event nahi hai. Event ki sahi

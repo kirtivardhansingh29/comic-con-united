@@ -251,7 +251,7 @@ export default function LivePage() {
       <p>
         <Link href="/">← Home</Link>
       </p>
-      <div className="prize-strip">Chance to Win Free Passes for Day 1</div>
+      <div className="prize-strip">Har game ka apna champion 🏆 Winners Board par naam</div>
 
       {err && <div className="err">{err}</div>}
 
@@ -498,7 +498,7 @@ export default function LivePage() {
           <p className="center">
             <span className="chip red">{view.modeLabel}</span>
           </p>
-          <p className="center muted">Last station: Comic Con! Winners ko Day 1 pass jeetne ka chance milega.</p>
+          <p className="center muted">Last station: Comic Con! Har game ka champion — Winners Board par naam.</p>
           <div className="podium">
             {(view.podium || []).map((pl) => (
               <div key={pl.id} className={`panel slot ${pl.rank === 1 ? "yellow" : ""}`} style={{ marginBottom: 0 }}>
@@ -514,7 +514,7 @@ export default function LivePage() {
               <Board rows={view.leaderboard} pid={pid} />
             </>
           )}
-          <p className="center muted">Hosted by Vitthal Diwedi · Chance to Win Free Passes for Day 1</p>
+          <p className="center muted">Hosted by Vitthal Diwedi · Har game ka apna champion 🏆 Winners Board par naam</p>
         </section>
       )}
 

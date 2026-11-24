@@ -81,7 +81,7 @@ function ReportInner() {
               <tr><th>Total participants</th><td>{report.totalParticipants}</td></tr>
               <tr><th>Questions played</th><td>{report.questionsPlayed}</td></tr>
               <tr><th>Total answers</th><td>{report.totalAnswers}</td></tr>
-              <tr><th>Prize</th><td>Chance to Win Free Passes for Day 1 — Top 3</td></tr>
+              <tr><th>Winners</th><td>Har game ka apna champion — Winners Board par naam</td></tr>
             </tbody>
           </table>
           <h3 style={{ marginTop: 20, fontSize: "1.4rem" }}>Top 3 winners</h3>
