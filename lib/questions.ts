@@ -70,9 +70,9 @@ export const QUESTIONS: Question[] = [
   },
   {
     category: "Sach Ya Jhooth",
-    text: "Sach ya Jhooth: Spider-Man pehli baar 1962 me comics me aaya tha.",
+    text: "Sach ya Jhooth: MCU ki sabse pehli film Iron Man (2008) hai.",
     options: ["Sach", "Jhooth"],
-    correct: 0, // Amazing Fantasy #15, August 1962
+    correct: 0,
   },
   // --- Ulta-Pulta Naam ---
   {
@@ -98,6 +98,12 @@ export const QUESTIONS: Question[] = [
     category: "Dialogue Pura Karo",
     text: "Motu Patlu: “Khali pet mere dimag ki ________ nahi jalti.”",
     options: ["Light", "Tube", "Batti", "Bijli"],
+    correct: 2,
+  },
+  {
+    category: "Nerd Quiz",
+    text: "Avengers: Endgame me Thanos ke Infinity Gauntlet me kul kitne Infinity Stones the?",
+    options: ["4", "5", "6", "7"],
     correct: 2,
   },
 ];
