@@ -116,6 +116,13 @@ export default function Home() {
             Ye logo asal event ki pehchan ke liye dikhaya gaya hai. Comic Con United ek
             fan activity hai — ye uski branding nahi hai.
           </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/delhi-comic-con-logo.png"
+            alt="Delhi Comic Con official logo"
+            style={{ width: 220, maxWidth: "70%", display: "block", marginBottom: 8, marginTop: 16 }}
+          />
+          <strong>Delhi Comic Con — Official Event Logo · Sirf Jaankari Ke Liye</strong>
         </div>
       </section>
 
