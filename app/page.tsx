@@ -39,7 +39,6 @@ export default async function Home() {
           saath ek saath khelo — bilkul Metro ki tarah fast, aur chai ki tarah garam competition.
         </p>
         <p>
-          <span className="chip yellow">Hosted by Vitthal Diwedi</span>
           <span className="chip">Live quiz</span>
           <span className="chip">Top 3 podium</span>
         </p>
@@ -198,7 +197,7 @@ export default async function Home() {
 
       <footer className="site">
         <p>
-          <strong>Comic Con United</strong> — Hosted by Vitthal Diwedi. Har game ka apna champion — Winners Board par naam.
+          <strong>Comic Con United</strong> — Har game ka apna champion — Winners Board par naam.
         </p>
         <p className="muted">
           Ye ek fan activity hai, Comic Con India ka official event nahi hai. Event ki sahi

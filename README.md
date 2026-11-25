@@ -26,7 +26,7 @@ Muse artifact runtime and deploys to Vercel as-is.
   anytime** (straight to the podium), and **remove player** (✕ next to each
   name in the host's player list).
 - **Proof report** (`/report`) — PIN-gated, print/screenshot-friendly:
-  activity, host (Vitthal Diwedi), event, date, participants, questions
+  activity, event, date, participants, questions
   played, total answers, Top 3 with name + phone + score. Made to be shown
   to Comic Con officials as proof.
 - **Arena mode** (`/arena`) — fully local, one-device host-run games

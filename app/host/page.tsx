@@ -252,7 +252,7 @@ export default function HostPage() {
         {msg && <div className="okmsg" style={{ marginTop: 14 }}>{msg}</div>}
         {err && <div className="err" style={{ marginTop: 14 }}>{err}</div>}
       </section>
-      <p className="muted center">Hosted by Vitthal Diwedi · Har game ka apna champion — Winners Board par naam</p>
+      <p className="muted center">Har game ka apna champion — Winners Board par naam</p>
     </main>
   );
 }

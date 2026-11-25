@@ -8,7 +8,6 @@ interface ReportWinner { game: string; gameLabel: string; name: string; phone: s
 
 interface Report {
   activity: string;
-  host: string;
   event: string;
   date: string;
   totalParticipants: number;
@@ -75,7 +74,6 @@ function ReportInner() {
           <table className="board">
             <tbody>
               <tr><th style={{ width: "38%" }}>Activity</th><td>{report.activity}</td></tr>
-              <tr><th>Host</th><td>{report.host}</td></tr>
               <tr><th>Event</th><td>{report.event} (5–6 Dec 2026, NSIC Exhibition Grounds, Okhla)</td></tr>
               <tr><th>Date</th><td>{report.date}</td></tr>
               <tr><th>Total participants</th><td>{report.totalParticipants}</td></tr>

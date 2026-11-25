@@ -533,7 +533,7 @@ export default function LivePage() {
               <Board rows={view.leaderboard} pid={pid} />
             </>
           )}
-          <p className="center muted">Hosted by Vitthal Diwedi · Har game ka apna champion — Winners Board par naam</p>
+          <p className="center muted">Har game ka apna champion — Winners Board par naam</p>
         </section>
       )}
 

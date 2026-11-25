@@ -196,7 +196,7 @@ export default function ArenaPage() {
             ))}
           </div>
         )}
-        <p className="muted">Scores is device par hi save hote hain (localStorage). Hosted by Vitthal Diwedi.</p>
+        <p className="muted">Scores is device par hi save hote hain (localStorage).</p>
       </section>
     </main>
   );

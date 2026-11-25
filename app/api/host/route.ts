@@ -29,7 +29,6 @@ import { POLL_PAIRS } from "@/lib/pollbattle";
 export const dynamic = "force-dynamic";
 
 const ACTIVITY = "Comic Con United — Live Games";
-const HOST_NAME = "Vitthal Diwedi";
 const EVENT_NAME = "Delhi Comic Con 2026";
 
 function bankLength(mode: GameMode): number {
@@ -267,7 +266,6 @@ export async function POST(req: NextRequest) {
         ok: true,
         report: {
           activity: ACTIVITY,
-          host: HOST_NAME,
           event: EVENT_NAME,
           date: new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
           totalParticipants: rows.length,
